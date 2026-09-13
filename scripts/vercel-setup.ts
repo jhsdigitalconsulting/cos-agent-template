@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import { createInterface } from "node:readline/promises";
+import { basename, resolve } from "node:path";
 
 const rl = createInterface({ input: process.stdin, output: process.stdout });
 
@@ -40,10 +41,29 @@ async function parseEnvLocal(path: string): Promise<Record<string, string>> {
   }
 }
 
+interface ClientConfig {
+  clientSlug: string;
+  agentVercelProject: string;
+  skynestVercelProject: string;
+}
+
+async function readClientConfig(): Promise<Partial<ClientConfig>> {
+  try {
+    return JSON.parse(await readFile(new URL("../.cos-client.json", import.meta.url), "utf8")) as ClientConfig;
+  } catch {
+    return {};
+  }
+}
+
 console.log("Provisioning a Vercel project from a .env.local file.\n");
 
+const clientConfig = await readClientConfig();
 const targetDir = await ask("Target directory to provision", ".");
-const projectName = await ask("Vercel project name");
+const isSkynestTarget = basename(resolve(targetDir)).endsWith("-skynest");
+const defaultProjectName = isSkynestTarget
+  ? clientConfig.skynestVercelProject
+  : clientConfig.agentVercelProject;
+const projectName = await ask("Vercel project name", defaultProjectName ?? "");
 
 console.log(`\nLinking Vercel project in ${targetDir} ...`);
 await run("vercel", ["link", "--yes", "--project", projectName], targetDir);

@@ -21,9 +21,24 @@ function run(command: string, args: string[], cwd: string): Promise<void> {
   });
 }
 
+interface ClientConfig {
+  clientSlug: string;
+  skynestVercelProject: string;
+}
+
+async function readClientConfig(): Promise<Partial<ClientConfig>> {
+  try {
+    return JSON.parse(await readFile(new URL("../.cos-client.json", import.meta.url), "utf8")) as ClientConfig;
+  } catch {
+    return {};
+  }
+}
+
 console.log("Bootstrapping a sibling Skynest (Context Nest) vault for this client.\n");
 
-const clientSlug = await ask("Client slug (matches what you gave init-client)");
+const clientConfig = await readClientConfig();
+const clientSlug = await ask("Client slug (matches what you gave init-client)", clientConfig.clientSlug ?? "");
+const skynestVercelProject = clientConfig.skynestVercelProject ?? `${clientSlug}-skynest`;
 const projectDir = new URL(`../../${clientSlug}-skynest/`, import.meta.url);
 const projectPath = projectDir.pathname;
 
@@ -52,7 +67,7 @@ console.log(
   "\n--- Manual step required: GitHub OAuth App ---\n" +
     "GitHub has no public API to create OAuth Apps, so this step can't be automated.\n" +
     "1. Go to https://github.com/settings/developers -> \"New OAuth App\".\n" +
-    `2. Application name: ${clientSlug} Skynest\n` +
+    `2. Application name: ${skynestVercelProject}\n` +
     "3. Homepage URL: the Vercel production URL you'll deploy this project to (set it after step vercel-setup, or use a placeholder now and update it later).\n" +
     "4. Authorization callback URL: <homepage-url>/api/auth/callback/github\n" +
     "5. Create the app, then copy its Client ID and generate a Client Secret.\n",

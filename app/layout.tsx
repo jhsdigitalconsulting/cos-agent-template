@@ -20,7 +20,7 @@ const mono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "cos-agent-template",
+  title: "{{AGENT_NAME}}",
   description: "A Next.js starter for eve agents with AI Elements.",
 };
 

@@ -1,9 +1,9 @@
-# {{CLIENT_NAME}} Agent
+# {{AGENT_NAME}}
 
 <!-- Replace this file's content with the agent's actual persona, purpose, and
-     response guidelines. `scripts/init-client.ts` substitutes {{CLIENT_NAME}}
-     but does not write the rest of this file for you — that's product work,
-     not scaffolding. -->
+     response guidelines. `scripts/init-client.ts` substitutes {{AGENT_NAME}}
+     and {{CLIENT_NAME}} but does not write the rest of this file for you —
+     that's product work, not scaffolding. -->
 
 You are an operations assistant for {{CLIENT_NAME}}. You help the team monitor
 automations, look up context from the shared knowledge vault (see the

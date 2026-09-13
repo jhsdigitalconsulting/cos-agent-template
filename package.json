@@ -20,6 +20,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "migrate": "node --experimental-strip-types scripts/migrate.ts",
+    "setup": "node --experimental-strip-types scripts/setup.ts",
     "init:client": "node --experimental-strip-types scripts/init-client.ts",
     "init:skynest": "node --experimental-strip-types scripts/init-skynest.ts",
     "setup:vercel": "node --experimental-strip-types scripts/vercel-setup.ts"
