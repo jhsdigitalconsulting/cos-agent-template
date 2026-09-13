@@ -1,7 +1,9 @@
+#!/usr/bin/env -S node --experimental-strip-types
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { createInterface } from "node:readline/promises";
+import { applyCtxnestUrl } from "./lib/ctxnest.ts";
 
 const rl = createInterface({ input: process.stdin, output: process.stdout });
 
@@ -114,8 +116,15 @@ if (await confirm("Create a new GitHub repository for this agent now?")) {
   console.log("Skipped GitHub repo creation.");
 }
 
-console.log("\n--- Step 3: Skynest vault (optional) ---\n");
-if (await confirm("Bootstrap this client's Skynest (Context Nest) vault now?", false)) {
+console.log("\n--- Step 3: Skynest (Context Nest) knowledge vault ---\n");
+if (await confirm("Does this client already have a Skynest vault deployed?", false)) {
+  const existingCtxnestUrl = await ask("Skynest MCP URL (e.g. https://ctx.client.com/api/mcp)");
+  if (existingCtxnestUrl) {
+    await applyCtxnestUrl(existingCtxnestUrl);
+  } else {
+    console.log("No URL given — skipped. Set CTXNEST_URL in .env.local whenever you have it.");
+  }
+} else if (await confirm("Create and bootstrap a new Skynest vault for this client now?", false)) {
   await run("node", ["--experimental-strip-types", "scripts/init-skynest.ts"]);
 } else {
   console.log('Skipped. Run "pnpm init:skynest" whenever you\'re ready.');

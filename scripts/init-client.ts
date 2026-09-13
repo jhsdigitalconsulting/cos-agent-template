@@ -33,7 +33,6 @@ const notificationChannels = await ask("Notification channels (comma list: slack
 const teamsWebhookUrl = notificationChannels.includes("teams")
   ? await ask("Teams incoming webhook URL")
   : "";
-const ctxnestUrl = await ask("Skynest (Context Nest) MCP URL, if already deployed — leave blank to fill in later via init-skynest");
 
 rl.close();
 
@@ -82,7 +81,7 @@ const envLines = [
   `SLACK_OPS_CHANNEL=${slackOpsChannel}`,
   `NOTIFICATION_CHANNELS=${notificationChannels}`,
   teamsWebhookUrl ? `TEAMS_WEBHOOK_URL=${teamsWebhookUrl}` : "TEAMS_WEBHOOK_URL=",
-  ctxnestUrl ? `CTXNEST_URL=${ctxnestUrl}` : "CTXNEST_URL=",
+  "CTXNEST_URL=",
 ];
 await writeFile(new URL("../.env.local", import.meta.url), `${envLines.join("\n")}\n`, { flag: "a" });
 console.log("appended values to .env.local");

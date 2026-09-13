@@ -15,17 +15,17 @@ Start by editing `agent/instructions.md` to define the agent's identity, purpose
 
 ## Setting up a new client
 
-Run `pnpm setup` for the full guided flow — it installs dependencies if needed, then walks through every step below in order, letting you skip any of them:
+Run the full guided flow — it installs dependencies if needed, then walks through every step below in order, letting you skip any of them:
 
 ```bash
-pnpm setup
+npx cos-agent-setup   # or: pnpm setup
 ```
 
 Or run each step on its own (in this order) if you'd rather control the flow yourself:
 
 1. `pnpm init:client` — interactively configures this repo: client display name, agent name, Vercel project names, Slack Connect connector slug, ops Slack channel, notification channels — and writes `.cos-client.json` (shared naming for the scripts below), `.env.local`, and updates `agent/instructions.md` / `app/layout.tsx` / `package.json`.
 2. Create a dedicated GitHub repository for this client's agent (via `gh repo create ... --source=. --remote=origin --push`, or by hand) — `pnpm setup` prompts for this automatically and handles a pre-existing `origin` remote safely.
-3. `pnpm init:skynest` — clones [`jhsdigitalconsulting/skynest`](https://github.com/jhsdigitalconsulting/skynest) as a sibling repo for this client's knowledge vault, generates its OAuth signing keypair, and walks you through the one manual step (registering a GitHub OAuth App) that can't be automated.
+3. Point this repo at a Skynest (Context Nest) knowledge vault, either one the client already has (just give the guided flow its MCP URL) or a brand new one via `pnpm init:skynest` — which clones [`jhsdigitalconsulting/skynest`](https://github.com/jhsdigitalconsulting/skynest) as a sibling repo, generates its OAuth signing keypair, and walks you through the one manual step (registering a GitHub OAuth App) that can't be automated.
 4. `pnpm setup:vercel` — links/creates the Vercel project(s), pushes environment variables, and provisions (or documents provisioning) the Neon database and, for Skynest, a Vercel Blob store.
 
 ## Core infrastructure

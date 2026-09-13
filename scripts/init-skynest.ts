@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import { readFile, writeFile } from "node:fs/promises";
 import { createInterface } from "node:readline/promises";
+import { applyCtxnestUrl } from "./lib/ctxnest.ts";
 
 const rl = createInterface({ input: process.stdin, output: process.stdout });
 
@@ -97,29 +98,7 @@ await writeFile(new URL("./.env.local", projectDir), `${skynestEnv}\n`);
 console.log(`\nWrote ${projectPath}.env.local (BLOB_READ_WRITE_TOKEN still blank — set it after connecting a Vercel Blob store).`);
 
 const ctxnestUrl = `${nextAuthUrl.replace(/\/$/, "")}/api/mcp`;
-
-const ctxnestConnectionPath = new URL("../agent/connections/ctxnest.ts", import.meta.url);
-const ctxnestConnection = await readFile(ctxnestConnectionPath, "utf8");
-await writeFile(
-  ctxnestConnectionPath,
-  ctxnestConnection.replace("https://ctx.example.com/api/mcp", ctxnestUrl),
-);
-console.log("updated agent/connections/ctxnest.ts");
-
-const mcpJsonPath = new URL("../.mcp.json", import.meta.url);
-const mcpJson = JSON.parse(await readFile(mcpJsonPath, "utf8")) as {
-  mcpServers: Record<string, { type: string; url: string }>;
-};
-mcpJson.mcpServers.ctxnest.url = ctxnestUrl;
-await writeFile(mcpJsonPath, `${JSON.stringify(mcpJson, null, 2)}\n`);
-console.log("updated .mcp.json");
-
-await writeFile(
-  new URL("../.env.local", import.meta.url),
-  `CTXNEST_URL=${ctxnestUrl}\n`,
-  { flag: "a" },
-);
-console.log("appended CTXNEST_URL to this repo's .env.local");
+await applyCtxnestUrl(ctxnestUrl);
 
 console.log(
   `\nDone. Next: run "pnpm setup:vercel" for both this project and ${projectPath} to deploy and connect a Vercel Blob store.`,
