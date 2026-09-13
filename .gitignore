@@ -78,6 +78,9 @@ web_modules/
 .next
 out
 
+# eve build output / local runtime state (pnpm build:eve, pnpm dev:eve)
+.eve
+
 # Nuxt.js build / generate output
 .nuxt
 dist

@@ -1,6 +1,6 @@
 # cos-agent-template
 
-A reusable [eve](https://eve.dev) agent template: Slack integration via Vercel Connect, a Neon Postgres logging/idempotency layer, a centralized `withWebhookHandler()` wrapper, a generic Slack/Teams notifier, and a Skynest (Context Nest) MCP knowledge-vault connection — plus scripts to stand up a new client from scratch.
+A reusable [eve](https://eve.dev) agent template: Slack integration via Vercel Connect, a Neon Postgres logging/idempotency layer, a centralized `withWebhookHandler()` wrapper, a generic Slack/Teams notifier, a Skynest (Context Nest) MCP knowledge-vault connection, and a sandboxed self-repair loop that lets the agent open PRs against its own repo — plus scripts to stand up a new client from scratch.
 
 ## Getting started
 
@@ -31,9 +31,19 @@ Or run each step on its own (in this order) if you'd rather control the flow you
 ## Core infrastructure
 
 - **`lib/db/`** — Neon client (`client.ts`), idempotency ledger (`ledger.ts`), webhook payload logging (`webhook-log.ts`), polling cursors (`cursor.ts`). Schema lives in `lib/db/schema.sql`; apply it with `pnpm migrate`.
-- **`lib/webhooks/handler.ts`** — `withWebhookHandler(provider, { verifySignature?, eventKey, handler })` wraps a route with: log the raw payload, verify its signature, claim it exactly once via the ledger, run your handler, and notify on failure. See the worked example at `app/api/hooks/example/route.ts`.
+- **`lib/webhooks/handler.ts`** — `withWebhookHandler(provider, { verifySignature?, eventKey, handler })` wraps a route with: log the raw payload, verify its signature, claim it exactly once via the ledger, run your handler, notify on failure, and record the outcome (`handled` / `skipped` / `error` plus the message) back onto the logged row. See the worked example at `app/api/hooks/example/route.ts`.
 - **`lib/notifications/`** — a generic `NotificationChannel` interface with `SlackNotifier` and `TeamsNotifier` implementations, fanned out by `notify()` per the `NOTIFICATION_CHANNELS` env var.
 - **`agent/connections/ctxnest.ts`** — MCP client connection to this client's Skynest vault.
+
+## Self-repair: agent-authored PRs
+
+Because every delivery's outcome is recorded, the agent can work a queue of real failures and propose fixes to its own code:
+
+- **`agent/tools/list_webhook_failures.ts` / `get_webhook_failure.ts`** — find failed deliveries and read the exact payload and headers that broke, so a repair starts from the real request rather than a guess.
+- **`agent/sandbox.ts`** — a Vercel sandbox whose network is locked to GitHub and the npm registry. `BOT_GITHUB_TOKEN` is injected as the git/GitHub credential at the firewall (and as `GH_TOKEN` inside the sandbox), so it never appears in a command string. Without that token the sandbox is `deny-all`.
+- **`agent/tools/repair_webhook_failure.ts`** — clones `GITHUB_REPO` into the sandbox and checks out `agent-repair/webhook-<id>` (or `agent-repair/<topic>`) off the latest `main`. It makes no code change itself; the agent then edits, runs `pnpm test` / `pnpm typecheck` in the checkout, pushes the branch, and opens a PR via the GitHub REST API. It requires approval on every call, never pushes to `main`, and never merges — a human reviews the PR.
+
+The rules the agent follows for this live in the "Repairing a failed automation" section of `agent/instructions.md`. `GITHUB_REPO` is recorded in `.env.local` by `pnpm setup` from the `origin` remote; `BOT_GITHUB_TOKEN` needs `repo` scope on it.
 
 ## Learn more
 

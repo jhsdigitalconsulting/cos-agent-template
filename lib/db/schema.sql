@@ -28,3 +28,10 @@ CREATE TABLE IF NOT EXISTS webhook_payloads (
   body        TEXT        NOT NULL,
   received_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Outcome of processing a logged webhook delivery, filled in after the fact so
+-- failures are queryable (the agent's list_webhook_failures tool) instead of
+-- only visible in runtime logs.
+ALTER TABLE webhook_payloads ADD COLUMN IF NOT EXISTS outcome TEXT;
+ALTER TABLE webhook_payloads ADD COLUMN IF NOT EXISTS error_message TEXT;
+ALTER TABLE webhook_payloads ADD COLUMN IF NOT EXISTS completed_at TIMESTAMPTZ;
