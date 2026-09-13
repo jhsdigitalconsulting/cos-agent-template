@@ -1,8 +1,11 @@
 {
-  "name": "cos-agent-template",
-  "version": "0.0.0",
+  "name": "@jhsdc/cos-agent-template",
+  "version": "1.0.0",
   "type": "module",
   "packageManager": "pnpm@12.3.4",
+  "publishConfig": {
+    "access": "public"
+  },
   "bin": {
     "cos-agent-setup": "./scripts/setup.ts"
   },
