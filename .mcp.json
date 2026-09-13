@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "ctxnest": {
+      "type": "http",
+      "url": "https://ctx.example.com/api/mcp"
+    }
+  }
+}
