@@ -87,6 +87,6 @@ await writeFile(new URL("../.env.local", import.meta.url), `${envLines.join("\n"
 console.log("appended values to .env.local");
 
 console.log(
-  `\nDone. Still needed: DATABASE_URL(_UNPOOLED)/NEON_PROJECT_ID, BOT_GITHUB_TOKEN, EXAMPLE_WEBHOOK_SECRET.\n` +
+  `\nDone. Still needed: DATABASE_URL(_UNPOOLED)/NEON_PROJECT_ID, BOT_GITHUB_TOKEN, GITHUB_REPO, EXAMPLE_WEBHOOK_SECRET.\n` +
     `Next: run "pnpm init:skynest" to bootstrap this client's Skynest vault, then "pnpm setup:vercel" to provision Vercel/Neon.`,
 );

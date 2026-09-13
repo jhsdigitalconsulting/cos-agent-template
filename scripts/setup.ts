@@ -1,7 +1,7 @@
 #!/usr/bin/env -S node --experimental-strip-types
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
-import { readFile } from "node:fs/promises";
+import { appendFile, readFile } from "node:fs/promises";
 import { createInterface } from "node:readline/promises";
 import { applyCtxnestUrl } from "./lib/ctxnest.ts";
 
@@ -65,6 +65,34 @@ async function readClientConfig(): Promise<Partial<ClientConfig>> {
   }
 }
 
+/**
+ * owner/repo for whichever GitHub remote this agent ends up on. The agent
+ * clones that repo in its sandbox to open repair PRs
+ * (agent/tools/repair_webhook_failure.ts), so it needs it as GITHUB_REPO at
+ * runtime — derived from `origin` rather than asked for a second time.
+ */
+function parseGithubRepo(remote: string): string | null {
+  const match = remote.match(/github\.com[:/](.+?)(?:\.git)?$/);
+  return match ? match[1] : null;
+}
+
+async function recordGithubRepo(): Promise<void> {
+  const remote = await currentGitRemote();
+  const repo = remote ? parseGithubRepo(remote) : null;
+  if (!repo) {
+    console.log('\nNo GitHub "origin" remote found — set GITHUB_REPO=<owner>/<repo> in .env.local by hand');
+    console.log("so the agent can open repair PRs against its own repo.");
+    return;
+  }
+
+  const envUrl = new URL("../.env.local", import.meta.url);
+  const existing = await readFile(envUrl, "utf8").catch(() => "");
+  if (/^GITHUB_REPO=.+$/m.test(existing)) return;
+
+  await appendFile(envUrl, `GITHUB_REPO=${repo}\n`);
+  console.log(`\nrecorded GITHUB_REPO=${repo} in .env.local (used for agent repair PRs)`);
+}
+
 console.log("cos-agent-template setup\n");
 console.log("This walks through everything needed to turn this template into a working");
 console.log("client agent: dependencies, naming, a dedicated GitHub repo, the Skynest");
@@ -115,6 +143,8 @@ if (await confirm("Create a new GitHub repository for this agent now?")) {
 } else {
   console.log("Skipped GitHub repo creation.");
 }
+
+await recordGithubRepo();
 
 console.log("\n--- Step 3: Skynest (Context Nest) knowledge vault ---\n");
 if (await confirm("Does this client already have a Skynest vault deployed?", false)) {

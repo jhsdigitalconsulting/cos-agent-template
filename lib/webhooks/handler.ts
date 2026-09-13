@@ -1,5 +1,5 @@
 import { claimEvent, releaseClaim } from "../db/ledger";
-import { logWebhookPayload } from "../db/webhook-log";
+import { completeWebhookLog, logWebhookPayload } from "../db/webhook-log";
 import { notify } from "../notifications";
 
 export interface WebhookOutcomeHandled {
@@ -27,7 +27,7 @@ export interface WebhookHandlerConfig {
 }
 
 /**
- * Wraps a webhook route with the log -> verify -> claim -> handle -> notify
+ * Wraps a webhook route with the log -> verify -> claim -> handle -> record
  * sequence every provider route otherwise repeats by hand:
  *  1. Log the raw payload unconditionally, before verification, so a request
  *     that fails signature checks or later fails to parse is still captured.
@@ -36,15 +36,21 @@ export interface WebhookHandlerConfig {
  *     claimed by a prior delivery).
  *  4. Run the handler; release the claim and notify on a thrown error, so a
  *     retried delivery isn't permanently locked out by a failed first attempt.
+ *  5. Record the outcome — handled, skipped, or error with its message — back
+ *     onto the logged row, so failures are queryable after the fact rather
+ *     than only visible in runtime logs. That log is what the agent's
+ *     list_webhook_failures / get_webhook_failure / repair_webhook_failure
+ *     tools read when repairing a broken automation.
  */
 export function withWebhookHandler(provider: string, config: WebhookHandlerConfig) {
   return async function handleWebhookRequest(request: Request): Promise<Response> {
     const rawBody = await request.text();
-    await logWebhookPayload(provider, request, rawBody);
+    const logId = await logWebhookPayload(provider, request, rawBody);
 
     if (config.verifySignature) {
       const verified = await config.verifySignature(rawBody, request);
       if (!verified) {
+        if (logId) await completeWebhookLog(logId, "error", "invalid signature");
         return Response.json({ error: "invalid signature" }, { status: 401 });
       }
     }
@@ -52,18 +58,22 @@ export function withWebhookHandler(provider: string, config: WebhookHandlerConfi
     const eventKey = config.eventKey(rawBody, request);
     const claim = await claimEvent(provider, eventKey);
     if (!claim.claimed) {
+      if (logId) await completeWebhookLog(logId, "skipped", "already claimed");
       return Response.json({ outcome: "already-claimed" }, { status: 200 });
     }
 
     try {
       const result = await config.handler(rawBody, request);
       if (result.outcome === "handled") {
+        if (logId) await completeWebhookLog(logId, "handled");
         return Response.json({ outcome: result.outcome, ...result.body }, { status: 200 });
       }
+      if (logId) await completeWebhookLog(logId, "skipped", result.reason);
       return Response.json({ outcome: result.outcome, reason: result.reason }, { status: 200 });
     } catch (error) {
       await releaseClaim(provider, eventKey);
       const message = error instanceof Error ? error.message : String(error);
+      if (logId) await completeWebhookLog(logId, "error", message);
       await notify({
         level: "error",
         context: `${provider} webhook failed`,
