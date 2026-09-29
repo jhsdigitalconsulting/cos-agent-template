@@ -45,6 +45,26 @@ Because every delivery's outcome is recorded, the agent can work a queue of real
 
 The rules the agent follows for this live in the "Repairing a failed automation" section of `agent/instructions.md`. `GITHUB_REPO` is recorded in `.env.local` by `pnpm setup` from the `origin` remote; `BOT_GITHUB_TOKEN` needs `repo` scope on it.
 
+## Troubleshooting: runaway `pnpm dlx dlx dlx ...` processes
+
+This template pins `"packageManager": "pnpm@12.3.4"`. pnpm 12 is a standalone binary, but on machines with Corepack enabled, the `pnpm` on your `PATH` may be Corepack's shim (`.../corepack/dist/pnpm.js`) instead. That shim has been observed to misbehave with pnpm 12: `pnpm --version` fails with `Failed to resolve the latest version of --version`, and `pnpm dlx <pkg>` re-execs itself with one more `dlx` argument each time (`pnpm dlx dlx dlx dlx ...`). Under a supervisor that restarts crashed processes (launchd `KeepAlive`, systemd `Restart=always`, an MCP server launcher, a process manager) this becomes a fork bomb and can freeze the machine.
+
+Check which `pnpm` you are running:
+
+```sh
+which -a pnpm
+readlink "$(which pnpm)"   # a path ending in corepack/dist/pnpm.js means the shim is active
+pnpm --version             # should print 12.3.4, not an error
+```
+
+If the shim is active, run `corepack disable` and install pnpm directly (`npm install -g pnpm@12.3.4`), or call the standalone binary by absolute path.
+
+Rules of thumb:
+
+- Don't put `pnpm dlx` / `pnpm exec` in an auto-restarting service, launch agent, or MCP server command. Install the package and run its binary by absolute path instead.
+- If you must supervise a process, set a restart throttle (launchd `ThrottleInterval`, systemd `RestartSec`) and make the script refuse to start when it detects a runaway (`pgrep -f 'pnpm dlx dlx'`).
+- If it is already happening, unload the supervisor first (`launchctl bootout gui/$(id -u)/<label>`), then `pkill -STOP -f "pnpm dlx"` followed by `pkill -9 -f "pnpm dlx"`. Killing the processes without stopping the supervisor lets them respawn.
+
 ## Learn more
 
 - [eve documentation](https://eve.dev/docs)
